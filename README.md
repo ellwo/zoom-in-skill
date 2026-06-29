@@ -123,6 +123,7 @@ npx zoom-in update   [targets...]   Re-apply the latest version to installed tar
 npx zoom-in uninstall [targets...]  Remove the skill (default: all recorded targets)
 npx zoom-in list                    Show where the skill is currently installed
 npx zoom-in targets                 List supported editors + detection status
+npx zoom-in doctor                  Diagnose the local install (cache, symlinks, version drift)
 npx zoom-in --version               Show the installed skill version
 npx zoom-in --help                  Full usage help
 ```
@@ -161,6 +162,16 @@ Update with `~/.zoom-in-skill/install.sh --update`, uninstall with `--uninstall`
 | `~/.cursor/skills/zoom-in/` | Installed skill for Cursor (one of several targets) |
 
 `~/.zoom-in/` is the **installer's** home and never conflicts with the per-project `.zoom-in/` context directory the skill itself writes during audits.
+
+### Troubleshooting
+
+If an editor doesn't see the skill, or after moving your home directory, run:
+
+```bash
+npx zoom-in doctor
+```
+
+It checks the staged cache, the manifest, and every recorded target (presence, symlink validity, copy integrity, and version drift), then tells you exactly which command fixes each problem (`update` / `install`). It exits non-zero if anything is wrong, so you can use it in scripts too.
 
 ---
 

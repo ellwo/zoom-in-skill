@@ -68,6 +68,10 @@ check('install copied a reference file',
 check('manifest recorded 2 installs',
   JSON.parse(fs.readFileSync(path.join(FAKE_HOME, '.zoom-in', 'manifest.json'), 'utf8')).installs.length === 2);
 
+// 4b. doctor reports a healthy install
+const doc = run(['doctor']);
+check('doctor reports healthy install', /install is healthy/.test(doc.out), doc.out.trim());
+
 // 5. list reflects installs
 const l = run(['list']);
 check('list shows cursor + claude', /cursor/.test(l.out) && /claude/.test(l.out));
@@ -106,6 +110,12 @@ fs.writeFileSync(foreign, '---\nname: not-zoom-in\n---\nforeign\n');
 run(['install', 'cline']);
 check('foreign skill was not overwritten',
   fs.readFileSync(foreign, 'utf8').includes('foreign'));
+
+// 11. doctor detects a broken symlink (must exit non-zero)
+run(['install', 'gemini', '--link']);
+fs.rmSync(path.join(FAKE_HOME, '.zoom-in', 'skills', 'zoom-in'), { recursive: true, force: true });
+const docBad = run(['doctor'], false);
+check('doctor flags a broken install', /problem/i.test(docBad.out), docBad.out.trim());
 
 // cleanup
 fs.rmSync(TMP, { recursive: true, force: true });
