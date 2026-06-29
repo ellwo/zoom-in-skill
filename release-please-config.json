@@ -5,7 +5,9 @@
     ".": {
       "release-type": "node",
       "package-name": "zoom-in",
-      "extra-files": ["skills/zoom-in/SKILL.md"]
+      "extra-files": [
+        { "type": "generic", "path": "skills/zoom-in/SKILL.md" }
+      ]
     }
   }
 }
