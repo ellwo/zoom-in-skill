@@ -1,227 +1,128 @@
 # `/zoom-in refactor [scope]` — Apply Fixes from a Previous Audit
 
-> Don't refactor without evidence. Let the audit guide the work.
-
----
-
-## Purpose
-
-Take the findings from a previous `/zoom-in audit` and systematically fix them in priority order. This command is the bridge between diagnosis and treatment — it ensures refactoring is targeted, justified, and conformant to house style.
-
-**Why this matters**: Refactoring without a prior audit is guessing. You might fix something that wasn't actually a problem, or introduce a new violation while fixing an old one. A structured refactor traces every change back to a specific finding with a specific severity and classification.
-
----
-
-## Chain of Thought
-
-1. **Analyze** — Load the audit findings. Which problems exist and how severe are they?
-2. **Critique** — Are the findings still valid? Has the code changed since the audit? Is the proposed fix appropriate?
-3. **Propose** — Order the fixes by priority. Present the refactor plan.
-4. **Execute** — Apply fixes one at a time, verifying each against house style.
-
----
+Take findings from a previous `/zoom-in audit` (or `focus`/`harden`) and systematically fix them in priority order. The bridge between diagnosis and treatment — refactoring is targeted, justified, and conformant to house style. Not a general-purpose "clean up code" tool.
 
 ## Prerequisites
 
-A previous `/zoom-in audit` (or `/zoom-in focus` or `/zoom-in harden`) must be available. The tool looks for audit results in this order:
-
-1. **Persisted audits** — `.zoom-in/context/audits/<scope>/` (most recent file)
-2. **Current conversation** — if an audit was run in this session
-
-If no audit is found in either location, fail with: "No audit found. Run `/zoom-in audit [scope]` first."
-
-**Why this is a hard prerequisite**: Without audit findings, there is no evidence base for refactoring. The refactor command is not a general-purpose "clean up code" tool — it is a systematic response to specific, classified, severity-rated findings.
-
----
+A previous audit/focus/harden must be available: (1) **persisted** in `.zoom-in/context/audits/<scope>/` (most recent file), or (2) **current conversation**. If neither → fail: "No audit found. Run `/zoom-in audit [scope]` first." Without findings, there's no evidence base.
 
 ## Scope
 
-Refactor supports the same scope as audit:
+Same as audit: *(none)* = all findings from most recent audit · `module_name` · `path/to/file` · `@lens-name` (e.g. `@clarity`).
 
-| Scope | Meaning |
-|-------|---------|
-| *(none)* | Fix all findings from the most recent audit |
-| `module_name` | Fix findings in a specific module only |
-| `path/to/file` | Fix findings in a specific file only |
-| `@lens-name` | Fix findings from a specific lens only (e.g., `@clarity`) |
+## 1. Locate the Most Recent Audit
 
-**Why scope matters**: Not every refactor needs to address the entire audit. A developer
-fixing one module can scope refactor to that module, verify, and iterate without
-touching unrelated findings.
+1. Check `.zoom-in/context/audits/` — if scope specified, look in `<scope>/`; if no scope, `full/` first then others; read most recent file (sorted by date in filename)
+2. If no persisted audit: check current conversation
+3. If neither: fail "No audit found"
 
----
+Persisted first — conversation history is ephemeral; persisted audits survive across sessions.
 
-## Step-by-Step Process
+**Extract from audit**: all findings with IDs (CL-1, ST-2, SE-1...), each finding's lens/classification/severity/location/suggested fix, overall scores per lens.
 
-### Step 1: Locate the Most Recent Audit
+**Also load**: `DECISIONS.md` (fix must not contradict an Active decision) · `ANTI-PATTERNS.md` (fix must not introduce a banned pattern — a banned fix is worse than the original problem).
 
-1. Check `.zoom-in/context/audits/` for persisted audits:
-   - If scope was specified: look in `.zoom-in/context/audits/<scope>/`
-   - If no scope: look in `.zoom-in/context/audits/full/` first, then other scopes
-   - Read the most recent file (sorted by date in filename)
-2. If no persisted audit found: check current conversation for audit results
-3. If neither exists: fail with "No audit found"
+**If audit is stale** (code changed significantly since): warn user, suggest re-running `/zoom-in audit` first.
 
-**Why persisted first**: Conversation history is ephemeral. Persisted audits survive across sessions, making `/zoom-in refactor` work even in new conversations.
+## 2. Load House-Style Context
 
-Once the audit is located, load its findings:
+1. `SYSTEM.md` — domain context, critical flows (some fixes touch these)
+2. `ARCHITECTURE.md` — established patterns, adopted decisions, golden references
 
-**Extract from the audit**:
-- All findings with their IDs (e.g., CL-1, ST-2, SE-1)
-- Each finding's lens, classification, severity, location, and suggested fix
-- The overall scores per lens
+A fix that doesn't conform to house style replaces one violation with another.
 
-**Also load**:
-- **DECISIONS.md** — To ensure refactoring respects Active decisions (a fix must not contradict an adopted decision)
-- **ANTI-PATTERNS.md** — To ensure refactoring doesn't introduce any banned patterns (a fix that uses a banned approach is worse than the original problem)
+## 3. Prioritize Findings (severity, then classification)
 
-**If the audit is stale** (code has changed significantly since the audit was run): Warn the user and suggest re-running `/zoom-in audit` first. A refactor based on outdated findings can introduce new problems.
+1. 🔴 Critical + `[principle]` — non-negotiable, production risk
+2. 🔴 Critical + `[conflict]` — conflicting conventions needing resolution
+3. 🟠 High + `[principle]` — architectural violations, no immediate prod risk
+4. 🟠 High + `[conflict]` — structural conflicts
+5. ⚠️ Medium + `[principle]` — convention violations weakening architecture
+6. ⚠️ Medium + `[house-style]` — style inconsistencies
+7. 💡 Low — minor improvements (often skipped in practice)
 
-### Step 2: Load House-Style Context
+## 4. Validate Each Finding Before Fixing
 
-Load:
-1. **SYSTEM.md** — Domain context and critical flows (some fixes may touch these areas)
-2. **ARCHITECTURE.md** — Established patterns, adopted decisions, golden references
-
-**Why load context**: A fix that doesn't conform to house style replaces one violation with another. Every refactor must be calibrated against the project's own conventions.
-
-### Step 3: Prioritize Findings
-
-Sort findings by severity, then by classification:
-
-**Priority order**:
-1. 🔴 Critical + `[principle]` — Non-negotiable violations with production risk
-2. 🔴 Critical + `[conflict]` — Conflicting conventions that need resolution
-3. 🟠 High + `[principle]` — Architectural violations without immediate production risk
-4. 🟠 High + `[conflict]` — Structural conflicts
-5. ⚠️ Medium + `[principle]` — Convention violations that weaken architecture
-6. ⚠️ Medium + `[house-style]` — Style inconsistencies
-7. 💡 Low — Minor improvements (often skipped in practice)
-
-**Why this order**: Critical findings with principle violations are the most damaging — they represent both risk and rule-breaking. Fixing them first provides the highest return on effort.
-
-### Step 4: Validate Each Finding Before Fixing
-
-Before applying any fix, confirm the finding is still valid:
-
-1. Read the code at the location specified in the finding
-2. Verify the problem still exists (code may have been changed since the audit)
+1. Read the code at the finding's location
+2. Verify the problem still exists (code may have changed since audit)
 3. Verify the suggested fix is still appropriate (surrounding context may have changed)
-4. Check that fixing this finding won't break something the audit didn't catch
+4. Check that fixing won't break something the audit didn't catch
 
-**Why validation matters**: An audit captures a snapshot. Code evolves. A finding that was valid last week may have been fixed by another developer, or the surrounding code may have changed such that the original suggested fix is now wrong. Blindly applying stale fixes creates new bugs.
+**If no longer valid**: mark "resolved externally" and skip — don't fix what's already fixed. Blindly applying stale fixes creates new bugs.
 
-**If a finding is no longer valid**: Mark it as "resolved externally" and skip it. Do not attempt to fix something that's already fixed.
+## 5. Apply Fixes
 
-### Step 5: Apply Fixes
+For each validated finding:
+1. Read the target file, understand current code
+2. Implement using patterns from golden references in ARCHITECTURE.md
+3. **Before applying**: verify the fix doesn't violate ANTI-PATTERNS.md (banned pattern is never an acceptable fix)
+4. **After applying**: verify the result conforms to Active Decisions in DECISIONS.md
+5. Quick mental check against each lens — ensure no new violations
+6. Multi-file fixes applied together — don't leave the codebase in an inconsistent intermediate state
 
-For each validated finding, apply the fix following house style:
+**Pattern adherence**: if audit says "follow established pattern from [golden reference]", read it first. If the fix creates a new pattern (no existing pattern covers this case), implement close to existing style and flag for `/zoom-in adopt` review.
 
-**Method**:
-1. Read the target file and understand the current code
-2. Implement the fix using patterns from golden references in ARCHITECTURE.md
-3. **Before applying**: Verify the fix doesn't violate ANTI-PATTERNS.md — a banned pattern is never an acceptable fix
-4. **After applying**: Verify the result conforms to Active Decisions in DECISIONS.md
-5. Ensure the fix doesn't introduce new violations (quick mental check against each lens)
-6. If the fix requires changes to multiple files, apply them together — don't leave the codebase in an inconsistent intermediate state
+**Each fix is a coherent, self-contained change traceable to its finding ID.** Don't bundle unrelated fixes.
 
-**Pattern adherence**:
-- If the audit says "follow established pattern from [golden reference]", read that reference first
-- If the fix creates a new pattern (because no existing pattern covers this case), implement it as close to existing style as possible and flag it for `/zoom-in adopt` review
+## 6. Update ARCHITECTURE.md If Patterns Evolve
 
-**Important**: Each fix should be a coherent, self-contained change. Don't bundle unrelated fixes into one change — each should be traceable to its finding ID.
+If refactor establishes a previously-undocumented pattern:
+- Matches an Emerging pattern (§2) → consider promoting to Established
+- Entirely new → add as Emerging
+- Becomes a reference implementation → add to §6 Golden References
 
-### Step 6: Update ARCHITECTURE.md If Patterns Evolve
+(Recording new patterns means the next audit enforces them — house-style must evolve with the codebase.)
 
-If a refactor establishes a pattern that wasn't previously documented:
-
-- If it matches an Emerging pattern from ARCHITECTURE.md §2 → consider promoting it to Established
-- If it's entirely new → add it as an Emerging pattern
-- If it becomes a reference implementation → add it to §6 Golden References
-
-**Why update ARCHITECTURE.md**: Refactoring that establishes new patterns without recording them means the next audit won't enforce them. The house-style document must evolve with the codebase.
-
-### Step 7: Summarize Results
-
-After all fixes are applied, produce a summary:
+## 7. Summarize Results
 
 ```
 # Zoom-in Refactor: [scope]
 
 ## Findings Addressed
 | ID | Severity | Status |
-|----|----------|--------|
 | CL-1 | 🔴 Critical | ✅ Fixed |
-| ST-1 | 🟠 High | ✅ Fixed |
 | SE-1 | 🟠 High | ⏭️ Skipped — code changed since audit |
-| PF-1 | ⚠️ Medium | ✅ Fixed |
 | CL-2 | 💡 Low | ⏭️ Deferred — low priority |
 
 ## Remaining Findings
 - SE-1: Re-audit recommended before fixing
-- CL-2: Low priority; address in next refactor cycle
+- CL-2: address in next refactor cycle
 
 ## ARCHITECTURE.md Updates
-- §2: Promoted "service layer returns typed result objects" from Emerging to Established
-- §6: Added `services/order_service.py` as golden reference for result object pattern
+- §2: Promoted "service layer returns typed result objects" Emerging → Established
+- §6: Added services/order_service.py as golden reference
 ```
 
-### After Fixes: Update Audit Status
+## 8. Update Audit Status & Backlog
 
-For each finding that was successfully fixed:
-- Note it as "resolved" (the next `/zoom-in audit` will detect it as "Resolved from Previous")
+**For each successfully fixed finding**: note as "resolved" (next audit detects it as "Resolved from Previous").
 
-For each finding intentionally left unfixed:
-- Add to ARCHITECTURE.md §4 (Known Exceptions) with reason
-- Note it as "acknowledged"
-- **Add to Technical Debt Backlog** (`.zoom-in/context/backlog.md`):
-  - Ask the user: "Defer this finding to the tech debt backlog? What's the reason?
-    Optional: ticket reference (e.g., GH-123)."
-  - If user confirms deferral → add a row to `backlog.md` under the finding's scope
-    with: Finding ID, Description, Severity, Deferred On (today), Reason, Ticket/Ref, Status: Open
-  - If user says "just skip, don't track" → add to Known Exceptions only, not backlog
-  - See `references/backlog.md` for full format and lifecycle
+**For each finding intentionally left unfixed**: add to ARCHITECTURE.md §4 (Known Exceptions) with reason; note as "acknowledged"; **add to Technical Debt Backlog** (`.zoom-in/context/backlog.md`):
+- Ask: "Defer this finding to the tech debt backlog? What's the reason? Optional: ticket reference (e.g. GH-123)."
+- If confirm deferral → add row to `backlog.md` under the finding's scope: Finding ID, Description, Severity, Deferred On (today), Reason, Ticket/Ref, Status: Open
+- If "just skip, don't track" → add to Known Exceptions only, not backlog
+- See `references/backlog.md` for full format/lifecycle
 
-Do NOT modify the persisted audit file — it is a historical record. The next `/zoom-in audit` will naturally reflect the current state.
+**Do NOT modify the persisted audit file** — it's a historical record. The next audit naturally reflects current state.
 
-### After Refactor: Close the Loop
+## 9. Close the Loop (non-negotiable)
 
-The refactor is not complete until verification confirms the fixes. Append to the summary:
-
+The refactor is not complete until verification confirms the fixes. Append:
 ```
 ## Next Steps
-- Run `/zoom-in verify` to confirm fixes are valid and no new violations introduced
-- Run `/zoom-in audit` for authoritative scores after verification
-- Run `/zoom-in adopt` to resolve any remaining [conflict] findings
+- /zoom-in verify — confirm fixes valid, no new violations
+- /zoom-in audit — authoritative scores after verification
+- /zoom-in adopt — resolve any remaining [conflict] findings
 ```
-
-**Why verification is non-negotiable**: A fix that resolves one finding but introduces
-another is a net negative. The verify step catches this before the user assumes the
-project is healthier than it is.
-
----
-
-## Integration with Other Commands
-
-- `/zoom-in audit` produces the findings this command consumes
-- `/zoom-in focus` provides root-cause context that makes refactoring more effective
-- `/zoom-in harden` produces security findings that refactor can address
-- Persisted audits enable `/zoom-in refactor` to work across sessions
-- After refactoring, `/zoom-in verify` confirms fixes are valid (recommended, not optional)
-- After verification, `/zoom-in audit` shows resolved findings and authoritative scores
-- `/zoom-in adopt` records new patterns established during refactoring
-- `/zoom-in adopt --ban` may be triggered when refactoring discovers a new anti-pattern
-- If `[conflict]` findings remain unresolved after refactor, recommend `/zoom-in adopt` to settle
-
----
+A fix that resolves one finding but introduces another is net negative — verify catches this before the user assumes the project is healthier than it is.
 
 ## Failure Modes
 
 | Situation | Response |
 |---|---|
 | No persisted audit and no conversation audit | Fail: "Run `/zoom-in audit [scope]` first" |
-| Persisted audit is stale (>30 days old) | Warn: "Last audit was on [date]. Consider re-running `/zoom-in audit` for current state." |
+| Persisted audit is stale (>30 days) | Warn: "Last audit was on [date]. Consider re-running `/zoom-in audit`." |
 | Audit is very stale | Warn and suggest re-auditing; proceed only if user confirms |
 | Fix would break existing tests | Stop; do not apply. Suggest updating tests first or re-planning the fix |
-| Fix conflicts with an Adopted Decision | Flag the conflict; ask user whether to amend the decision or revise the fix |
+| Fix conflicts with an Adopted Decision | Flag the conflict; ask whether to amend the decision or revise the fix |
 | Too many findings for one session | Apply only 🔴 Critical and 🟠 High; defer the rest |
