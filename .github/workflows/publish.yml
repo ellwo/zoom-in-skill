@@ -46,7 +46,9 @@ jobs:
       - name: Publish to npm (idempotent, with provenance)
         run: |
           set -euo pipefail
-          if [ -z "${NPM_TOKEN:-}" ]; then
+          # The secret is wired to npm via NODE_AUTH_TOKEN (see env: below), so
+          # that's the variable to test — NOT $NPM_TOKEN, which is never set.
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
             echo "::notice::NPM_TOKEN secret is not set — skipping npm publish. Add it (Settings → Secrets → Actions) to enable publishing."
             exit 0
           fi
