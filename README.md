@@ -173,19 +173,64 @@ The CLI has **zero runtime dependencies** — it uses only Node built-ins, so `n
 
 ---
 
-## For contributors / publishing
+## For contributors
 
 ```bash
 git clone git@github.com:ellwo/zoom-in-skill.git
 cd zoom-in-skill
-node test/smoke.js          # run the CLI smoke tests (sandboxed fake HOME)
+npm test                    # version-sync + smoke tests (sandboxed fake HOME)
 node bin/zoom-in.js targets # try it locally
-npm publish                 # publish a new version (maintainers)
 ```
 
 The skill content lives in [`skills/zoom-in/`](skills/zoom-in/). The installer code is plain CommonJS in [`bin/`](bin/) and [`src/`](src/) with no dependencies.
 
-When bumping the skill, update `version:` in both [`package.json`](package.json) and the [`skills/zoom-in/SKILL.md`](skills/zoom-in/SKILL.md) frontmatter so `npx zoom-in --version` and `update` report the same number.
+Use **Conventional Commits** (`feat:`, `fix:`, `feat!:` for breaking, `docs:`/`chore:`/`ci:` for no-release) so the automated release pipeline can version and changelog your work.
+
+## Releasing (automated)
+
+Releases are fully automated via GitHub Actions — no manual `npm publish`:
+
+1. **You merge PRs to `main`** (using Conventional Commit titles).
+2. **[release-please](https://github.com/googleapis/release-please)** keeps a running "release PR" open that bumps `package.json`, `skills/zoom-in/SKILL.md`, and `CHANGELOG.md` based on the commits since the last release.
+3. **You merge the release PR** when you're ready to ship. release-please then creates the `vX.Y.Z` tag and a GitHub Release with the auto-generated changelog.
+4. **[publish.yml](.github/workflows/publish.yml)** fires on that tag and publishes `zoom-in@X.Y.Z` to npm **with provenance** (idempotent — re-runs skip if the version is already published).
+
+CI (`.github/workflows/ci.yml`) gates every PR with the version-sync check, the smoke test, and a tarball check.
+
+### One-time setup
+
+1. **Create an npm automation token** at <https://www.npmjs.com/settings/~/tokens> (Granular Access or Classic "Automation" token — it publishes without requiring your 2FA OTP). Scope it to publish `zoom-in`.
+2. **Add it as a repository secret** named `NPM_TOKEN`:
+   `Settings → Secrets and variables → Actions → New repository secret`.
+3. Ensure the repo is **public** (required for npm provenance) and that
+   `Settings → Actions → General → Workflow permissions` allows read/write as
+   needed by the workflows.
+
+### First release
+
+release-please will open the initial release PR once it sees Conventional
+Commit messages on `main`. If you'd rather ship `1.0.0` immediately:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0      # triggers publish.yml → npm publish
+```
+
+(Then optionally create a GitHub Release from that tag.)
+
+### Subsequent releases
+
+Just keep merging `feat:`/`fix:` PRs. When the release-please PR's proposed
+version looks right, merge it — the tag, GitHub Release, changelog, and npm
+publish all happen automatically. `npx zoom-in update` then refreshes every
+installed copy for your users.
+
+### Bumping the skill
+
+The version lives in **two** places that must stay in sync (enforced by
+`test/version-sync.js` and CI): `package.json` and the `version:` frontmatter
+of [`skills/zoom-in/SKILL.md`](skills/zoom-in/SKILL.md). release-please bumps
+both automatically via `extra-files`; if you ever bump by hand, update both.
 
 ## License
 

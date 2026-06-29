@@ -1,0 +1,35 @@
+name: Release
+
+# release-please maintains a running release PR that bumps the version,
+# updates CHANGELOG.md, and bumps skills/zoom-in/SKILL.md to match. When the
+# maintainer merges that release PR, release-please creates the vX.Y.Z tag and
+# a GitHub Release with the auto-generated changelog. That tag push then
+# triggers publish.yml.
+#
+# Commits must use Conventional Commits for the changelog + version bump:
+#   feat:     -> minor        fix:       -> patch
+#   feat!:    -> major       BREAKING CHANGE: -> major
+#   docs/chore/refactor/test/ci: -> no release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    name: Version + changelog + tag + GitHub release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          release-type: node
+          package-name: zoom-in
+          # Tags are vX.Y.Z (not zoom-in-vX.Y.Z) — single-package repo.
+          include-component-in-tag: false
+          # Keep the skill's declared version in lockstep with package.json.
+          extra-files: |
+            skills/zoom-in/SKILL.md

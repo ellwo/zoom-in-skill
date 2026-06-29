@@ -1,0 +1,46 @@
+name: Publish
+
+# Fires when a vX.Y.Z tag is pushed — either by release-please (after merging
+# the release PR) or manually for the first release (`git tag v1.0.0 && git
+# push origin v1.0.0`). Publishes to npm with provenance, idempotently.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  id-token: write   # required for npm publish --provenance
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Version sync check (package.json vs SKILL.md)
+        run: node test/version-sync.js
+
+      - name: Smoke test
+        run: node test/smoke.js
+
+      - name: Publish to npm (idempotent, with provenance)
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          echo "Releasing zoom-in@$VERSION"
+          if npm view "zoom-in@$VERSION" version >/dev/null 2>&1; then
+            echo "::notice::zoom-in@$VERSION is already on npm — skipping publish."
+          else
+            npm publish --provenance --access public
+            echo "::notice::Published zoom-in@$VERSION"
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Smoke + packaging gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Version sync check (package.json vs SKILL.md)
+        run: node test/version-sync.js
+
+      - name: Smoke test (sandboxed install/update/uninstall)
+        run: node test/smoke.js
+
+      - name: Package tarball check
+        run: |
+          npm pack --dry-run
+          # Fail if the tarball would accidentally ship test/ or stray files.
+          if npm pack --dry-run 2>&1 | grep -qE 'test/|\.tgz$'; then
+            echo "::error::Tarball includes files it shouldn't (test/ or .tgz)"
+            exit 1
+          fi

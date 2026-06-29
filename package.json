@@ -41,6 +41,6 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node test/smoke.js"
+    "test": "node test/version-sync.js && node test/smoke.js"
   }
 }
