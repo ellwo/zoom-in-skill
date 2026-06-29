@@ -231,7 +231,7 @@ The release PR auto-merges after CI passes, so every `feat:`/`fix:` merge produc
 
 ### Bumping the skill
 
-The version lives in **two** places that must stay in sync (enforced by `test/version-sync.js` and CI): `package.json` and the `version:` frontmatter of [`skills/zoom-in/SKILL.md`](skills/zoom-in/SKILL.md). release-please bumps both automatically — it reads [`release-please-config.json`](release-please-config.json), which lists `skills/zoom-in/SKILL.md` under `extra-files`; if you ever bump by hand, update both.
+The version lives in **two** places that must stay in sync (enforced by `test/version-sync.js` and CI): `package.json` and the `version:` frontmatter of [`skills/zoom-in/SKILL.md`](skills/zoom-in/SKILL.md). release-please bumps both automatically — [`release-please-config.json`](release-please-config.json) lists `skills/zoom-in/SKILL.md` under `extra-files` (type `generic`), and the `# x-release-please-version` annotation on the skill's `version:` line tells release-please's Generic updater which value to bump. If you ever bump by hand, update both.
 
 ## License
 
