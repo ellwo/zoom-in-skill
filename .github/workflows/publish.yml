@@ -1,13 +1,23 @@
-name: Publish
+name: Publish (manual)
 
-# Fires when a vX.Y.Z tag is pushed — either by release-please (after merging
-# the release PR) or manually for the first release (`git tag v1.0.0 && git
-# push origin v1.0.0`). Publishes to npm with provenance, idempotently.
+# Manual / fallback path to npm. The primary publish now happens automatically
+# as a job in release-please.yml. Use this workflow to:
+#   - publish a version that was tagged by hand (`git tag vX.Y.Z && git push origin vX.Y.Z`)
+#   - re-run a publish from the Actions UI (workflow_dispatch), e.g. publishing
+#     an already-tagged version after first setting the NPM_TOKEN secret.
+#
+# Idempotent: skips if the version is already on npm. Skips gracefully (green)
+# if NPM_TOKEN is not set.
 
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Tag to publish (e.g. v1.0.0)'
+        required: true
 
 permissions:
   contents: read
@@ -19,6 +29,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
 
       - uses: actions/setup-node@v4
         with:
@@ -34,10 +46,14 @@ jobs:
       - name: Publish to npm (idempotent, with provenance)
         run: |
           set -euo pipefail
+          if [ -z "${NPM_TOKEN:-}" ]; then
+            echo "::notice::NPM_TOKEN secret is not set — skipping npm publish. Add it (Settings → Secrets → Actions) to enable publishing."
+            exit 0
+          fi
           VERSION=$(node -p "require('./package.json').version")
           echo "Releasing zoom-in@$VERSION"
           if npm view "zoom-in@$VERSION" version >/dev/null 2>&1; then
-            echo "::notice::zoom-in@$VERSION is already on npm — skipping publish."
+            echo "::notice::zoom-in@$VERSION is already on npm — skipping."
           else
             npm publish --provenance --access public
             echo "::notice::Published zoom-in@$VERSION"
