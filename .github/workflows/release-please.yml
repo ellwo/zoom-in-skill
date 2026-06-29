@@ -33,14 +33,12 @@ jobs:
     steps:
       - id: rp
         uses: googleapis/release-please-action@v4
+        # v4 reads package config (release-type, package-name, extra-files,
+        # include-component-in-tag) from release-please-config.json — these are
+        # NOT `with:` inputs in v4. The config keeps skills/zoom-in/SKILL.md's
+        # version in lockstep with package.json via extra-files.
         with:
-          release-type: node
-          package-name: zoom-in
-          # Tags are vX.Y.Z (not zoom-in-vX.Y.Z) — single-package repo.
-          include-component-in-tag: false
-          # Keep the skill's declared version in lockstep with package.json.
-          extra-files: |
-            skills/zoom-in/SKILL.md
+          config-file: release-please-config.json
 
   publish:
     name: Publish to npm
