@@ -1,0 +1,13 @@
+# Keep the published tarball lean: ship only what `npx zoom-in` needs.
+# Tests and dev cruft are excluded.
+
+test/
+.git/
+.github/
+.gitignore
+.npmignore
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
