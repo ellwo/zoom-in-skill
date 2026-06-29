@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/ellwo/zoom-in-skill/compare/v1.0.3...v1.1.0) (2026-06-29)
+
+
+### Features
+
+* interactive installer (prompt for scope, editors, method) ([#13](https://github.com/ellwo/zoom-in-skill/issues/13)) ([536fe39](https://github.com/ellwo/zoom-in-skill/commit/536fe397ca491cdfdb5272b7600944463995eb1d))
+
 ## [1.0.3](https://github.com/ellwo/zoom-in-skill/compare/v1.0.2...v1.0.3) (2026-06-29)
 
 
