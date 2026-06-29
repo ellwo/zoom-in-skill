@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/ellwo/zoom-in-skill/compare/v1.0.2...v1.0.3) (2026-06-29)
+
+
+### Bug Fixes
+
+* check NODE_AUTH_TOKEN (not NPM_TOKEN) for the publish-secret guard ([#10](https://github.com/ellwo/zoom-in-skill/issues/10)) ([fb88a88](https://github.com/ellwo/zoom-in-skill/commit/fb88a8852f68b9790294c9416a3730083800f572))
+
 ## [1.0.2](https://github.com/ellwo/zoom-in-skill/compare/v1.0.1...v1.0.2) (2026-06-29)
 
 
