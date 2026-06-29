@@ -1,7 +1,7 @@
 ---
 name: zoom-in
 description: Strict architectural audit, planning, and enforcement for backend systems. Scores code across 7 lenses (Clarity, Structure, Performance, Security, Resilience, Domain Integrity, Observability), enforces golden-pattern laws, and generates an adaptive ARCHITECTURE.md house-style file. Use this skill whenever the user wants to audit code quality, review architecture, plan a feature with strict conventions, harden security, optimize performance, refactor code, or establish/evolve project conventions — even if they don't explicitly say "zoom-in" or "audit." Also use when the user asks about code quality, technical debt, best practices for their backend project, or wants to enforce consistency across modules.
-version: 1.0.1 # x-release-please-version
+version: 1.0.2 # x-release-please-version
 user-invocable: true
 argument-hint: "[init|re-init|map · audit|focus|harden · refactor|verify · adopt|plan] [scope]"
 license: Apache 2.0
