@@ -119,63 +119,31 @@ by verification.
 
 #### `/zoom-in init` — Discover project context
 
-Scans the project, detects framework, interviews user, creates `SYSTEM.md`, `ARCHITECTURE.md`, `DECISIONS.md`, and `ANTI-PATTERNS.md`. See `references/init.md`.
+Scans the project, detects framework, interviews the user, and generates four foundational documents: `SYSTEM.md`, `ARCHITECTURE.md`, `DECISIONS.md`, and `ANTI-PATTERNS.md`. Everything else depends on these files.
 
-**Workflow:**
+**Produces:** `SYSTEM.md`, `ARCHITECTURE.md`, `DECISIONS.md`, `ANTI-PATTERNS.md` at project root.
 
-1. Detect framework using signal table above
-2. Interview user: system type, registers, tenancy model, auth approach
-3. Scan project structure: entry points, config, modules, dependency files
-4. For each module: examine models/views/controllers/services/tasks as applicable
-5. Compare discovered patterns across modules:
-   - 3+ modules do the same thing consistently → **Established**
-   - 1-2 modules do it, others don't → **Emerging**
-   - Different modules do it differently → **Inconsistent**
-6. Identify **Golden References** — files that best embody each Established pattern
-7. Write `SYSTEM.md` and `ARCHITECTURE.md`
-8. Generate `ANTI-PATTERNS.md` from universal bans + framework-specific bans + register-specific bans + discovered violations
-9. Generate `DECISIONS.md` (initially empty ADR index; populated as decisions are adopted)
-10. If any file already exists: merge, don't overwrite. Preserve §3 Adopted Decisions, §4 Known Exceptions, and any existing ADR records or bans.
-
-**After init completes**: Suggest `/zoom-in map` to understand the dependency graph, then `/zoom-in audit` for a baseline health check.
+Framework detection, golden reference discovery, interview, output file generation, merge-on-existing behavior, after-init next steps: see `references/init.md`.
 
 ---
 
 #### `/zoom-in re-init` — Evolution sync for existing projects
 
-Synchronizes existing context files with the current skill version and codebase state. Detects schema gaps (new skill features missing from context), codebase drift (patterns/golden references that went stale), and untracked changes (edits made outside proper process). See `references/re-init.md`.
+Synchronizes existing context files with the current skill version and codebase state. Detects schema gaps (new skill features missing from context), codebase drift (patterns/golden references that went stale), and untracked changes (edits made outside proper process). Not for new projects — use `/zoom-in init`.
 
-**When to use**: After skill updates, major refactors, or when context files feel stale. Not for new projects — use `/zoom-in init` instead.
+**Fails if:** no `SYSTEM.md` or `ARCHITECTURE.md` → suggest `/zoom-in init`.
 
-**Workflow:**
-
-1. Load existing context files (SYSTEM.md, ARCHITECTURE.md, DECISIONS.md, ANTI-PATTERNS.md)
-2. Git diff — detect uncommitted changes to context files (unchecked)
-3. Schema version gap analysis — compare project's `init_version` to current skill version using `references/init-changelog.md`; verify each new feature via field detection
-4. Deep drift check — rescan codebase: verify §2 patterns still hold, §6 golden references still exist, discover new patterns, check for orphaned decisions
-5. Auto-detect Scope — if switching to Modular, infer Scope for each ADR from title/context/golden reference
-6. Present full Gap & Drift Report (schema gaps, untracked changes, pattern drift, orphaned decisions, anti-pattern drift)
-7. Interactive repair — confirm/modify/reject each issue (Draft Gate mandatory for any decision/ban changes)
-8. Apply confirmed changes only — update files, never touch audit history
-9. Report results (what changed, what was preserved, what was rejected)
-
-**After re-init completes**: Suggest `/zoom-in audit` for authoritative scores with the now-accurate context.
+When to use, gap analysis, drift check, orphaned decisions, interactive repair, Flat↔Modular switching: see `references/re-init.md`.
 
 ---
 
 #### `/zoom-in map` — Analyze project structure
 
-Draws dependency graph, detects SRP violations and circular dependencies. See `references/map.md`.
+Draws the dependency graph, detects SRP violations, circular dependencies, and layer breaches. The diagnostic foundation for audits, plans, and refactors.
 
-**Workflow:**
+**Produces:** structural map — module inventory, dependency graph, violations, technical debt summary.
 
-1. Read `SYSTEM.md` and `ARCHITECTURE.md`
-2. Trace import/dependency graph across modules
-3. Identify: circular dependencies, god modules, leaky abstractions
-4. Map data flow: entry points → business logic → data access
-5. Produce structural map with findings
-
-**When to re-run**: After structural changes that add, remove, or reorganize modules. Not needed after every refactor — only when the dependency graph itself changes.
+Module inventory, dependency tracing, violation detection, layer analysis, when to re-run: see `references/map.md`.
 
 ---
 
@@ -183,117 +151,36 @@ Draws dependency graph, detects SRP violations and circular dependencies. See `r
 
 #### `/zoom-in audit [scope]` — Full 7-lens evaluation
 
-The core command. Produces a scored report across all seven lenses, then presents a **triaged action path** — not just findings, but which command to run next and in what order. See `references/audit.md`.
+The core command. Scored report across all seven lenses + triaged action path — not just findings, but which command to run next and in what order.
 
 **Scope:** module name, file path, package, `@lens-name`, or omit for full project.
+**Produces:** scored report (max 70), recommended action sequence, persisted audit in `.zoom-in/context/audits/<scope>/`.
+**Fails if:** `SYSTEM.md` or `ARCHITECTURE.md` missing → suggest `/zoom-in init`.
 
-**Workflow:**
-
-1. Read `SYSTEM.md` and `ARCHITECTURE.md` (fail if missing, suggest `/zoom-in init`)
-2. Read relevant register reference(s)
-3. Read relevant framework reference
-4. Read all seven lens reference files
-5. For each lens, examine the code in scope against its signals
-6. Classify every finding: `[principle]`, `[house-style]`, or `[conflict]`
-7. Score each lens 1-10 per its rubric
-8. If Security ≤ 3 or Domain Integrity ≤ 3: flag 🔴 HARDEN REQUIRED / 🔴 DOMAIN INTEGRITY CRITICAL
-9. If Observability ≤ 3: flag 🔴 BLIND SPOT — production issues undetectable
-10. Produce the audit report
-11. **Triage**: apply lens triage rules to determine the recommended action sequence
-12. **Ask the user**: 2-3 targeted questions about priorities and scope
-13. Present **Recommended Actions** — ordered command list based on findings and user answers
-
-**After audit completes:**
-14. Compare with previous audit (if exists) — calculate deltas per lens
-15. Persist to `.zoom-in/context/audits/<scope>/YYYY-MM-DD--score-XX.md`
-16. Update `.zoom-in/context/audits/index.md`
-17. Auto-cleanup: keep only 2 most recent audits per scope
-18. Report: "Previous: X/70 → Current: Y/70 (Delta: +N)"
-
-**Lens triage rules** (applied in order):
-
-| Condition | Primary Action |
-|-----------|---------------|
-| Security ≤ 3 | `/zoom-in harden` first |
-| Domain Integrity ≤ 3 | `/zoom-in focus domain-integrity` first |
-| Observability ≤ 3 | `/zoom-in focus observability` first — blind spot in production |
-| Any `[conflict]` finding | `/zoom-in adopt` first |
-| Any lens ≤ 5 with 🔴 | `/zoom-in focus [lens]` then `/zoom-in refactor` |
-| All lenses ≥ 6, only 🟠/⚠️/💡 | `/zoom-in refactor` directly |
-| All lenses ≥ 8 | `/zoom-in verify` (light touch — project is healthy) |
-
-**Report format:**
-
-```
-## Audit: [scope]
-
-Overall: XX/70
-
-### 1. Clarity — X/10
-⚠ [house-style] `path:line` — description
-   Why: concrete consequence of this violation
-   Reference: [golden reference or principle]
-   → Fix: specific, actionable suggestion
-
-### 2. Structure — X/10
-🔴 [principle] `path:line` — description
-   → Fix: specific suggestion
-...
-
-## Recommended Actions
-1. `/zoom-in harden` — [SE-1], [SE-3]: security scored 3/10, active risk
-2. `/zoom-in adopt` — [CL-5], [ST-3]: [conflict] findings need resolution
-3. `/zoom-in refactor` — Apply remaining 🔴/🟠 fixes (7 findings)
-4. `/zoom-in verify` — After fixes, confirm no new violations
-5. `/zoom-in audit` — Re-audit to validate score improvement
-```
-
-**Severity markers:**
-
-- 🔴 Critical — must fix before next release (security holes, data corruption, state machine violations)
-- 🟠 High — should fix soon (N+1 on hot paths, missing tests for financial logic, tenant leaks)
-- ⚠️ Medium — worth fixing (style inconsistencies, missing docs, minor duplication)
-- 💡 Low — nice to have (emerging pattern not yet adopted, legacy code noted)
-
-**Scoring is strict:** 3/10 means real problems. 6/10 means acceptable but needs work. 8/10 means well-executed. 10/10 is nearly impossible — no findings at all in the lens.
+Full workflow, lens triage rules, report format, severity markers, scoring, change detection, backlog review, delta comparison, persistence, sub-agent strategy: see `references/audit.md`.
 
 ---
 
 #### `/zoom-in focus [lens] [scope]` — Deep-dive on one lens
 
-Dedicated depth on a single lens that the audit flagged as weak. Traces root causes, maps
-causal chains between findings, and proposes systemic fixes instead of symptom patches. See `references/focus.md`.
+Dedicated depth on a single lens that the audit flagged as weak. Traces root causes, maps causal chains between findings, and proposes systemic fixes instead of symptom patches.
 
-**Lens names:** `clarity`, `structure`, `performance`, `security`, `resilience`, `domain-integrity`, `observability`
+**Scope:** one of `clarity`, `structure`, `performance`, `security`, `resilience`, `domain-integrity`, `observability` + optional module/file scope.
+**Produces:** focus report with root causes, causal chains, remediation plan; appended to the most recent audit for the scope.
+**Fails if:** `SYSTEM.md` or `ARCHITECTURE.md` missing → suggest `/zoom-in init`; invalid lens name.
 
-**When to use**: When a lens scored ≤ 5 in audit, or when you need root-cause analysis before refactoring. `/zoom-in focus security` is valid but `/zoom-in harden` provides richer security-specific workflow.
-
-**Workflow:**
-
-1. Load context + the single lens reference file (faster than full audit)
-2. Deep-scan: read every file relevant to the lens in scope (more thorough than audit)
-3. Root cause analysis: trace each finding to its causal category (missing convention, wrong convention, missing abstraction, knowledge gap, legacy, isolated)
-4. Map causal chains: multiple surface findings sharing a root cause → one systemic fix
-5. Score the lens (may differ from audit score due to deeper scan)
-6. Produce focus report with root causes, causal chains, and remediation plan
-7. Recommend next steps: adopt missing conventions → refactor point fixes → verify
+When to use, deep scan, root cause categories, causal chains, focus report format, persistence: see `references/focus.md`.
 
 ---
 
 #### `/zoom-in harden [scope]` — Deep security review
 
-Focused Security assessment beyond what the general audit's Security lens covers. OWASP + tenant isolation + compliance. See `references/harden.md`.
+Focused security assessment beyond the audit's Security lens: OWASP Top 10, tenant isolation, compliance. Always recommended when Security ≤ 3.
 
-**Workflow:**
+**Scope:** module, file path, or omit for full project.
+**Produces:** security-focused report with OWASP-categorized findings, severity ratings, remediation priority.
 
-1. Read `ARCHITECTURE.md` §2 Security patterns
-2. Read `references/lens-security.md`
-3. Read relevant register reference (SaaS/Enterprise add extra checks)
-4. OWASP Top 10 systematic checklist
-5. Deep-dive: permissions, secrets, validation, data exposure, auth
-6. For each permission gap: trace the full endpoint → handler → data access chain
-7. Produce security-focused report with severity ratings and immediate fixes
-8. Recommend: `/zoom-in refactor` for fixes → `/zoom-in verify` for confirmation
+OWASP checklist, deep checks (auth, authz, input, data exposure, config, dependencies, compliance), decision/ban compliance, report format: see `references/harden.md`.
 
 ---
 
@@ -301,45 +188,25 @@ Focused Security assessment beyond what the general audit's Security lens covers
 
 #### `/zoom-in refactor [scope]` — Apply audit fixes
 
-Applies fixes from a previous audit or focus. Not a new evaluation — an execution step. See `references/refactor.md`.
+Applies fixes from a previous audit, focus, or harden. Not a new evaluation — an execution step. Each fix traces back to a specific finding.
 
-**Scope:** supports the same scope as audit — module name, file path, or omit for all findings from the most recent audit.
+**Scope:** module, file path, `@lens-name`, or omit for all findings from the most recent audit.
+**Produces:** fix summary (per-finding status), `ARCHITECTURE.md` updates for evolved patterns, backlog entries for deferred findings.
+**Fails if:** no previous audit found (persisted or in conversation) → suggest `/zoom-in audit`.
 
-**Workflow:**
-
-1. Locate audit: check `.zoom-in/context/audits/` first, then conversation history
-2. Sort findings by severity (🔴 first, then 🟠, then ⚠️)
-3. Validate each finding is still current before fixing
-4. For each finding in scope: implement the suggested fix following house style
-5. After fixes: run project-specific verification (lint, typecheck, tests as applicable)
-6. Update `ARCHITECTURE.md` §4 (Known Exceptions) for any finding intentionally left unfixed
-7. If any `[conflict]` findings remain unresolved → recommend `/zoom-in adopt`
-8. **After refactor completes**: recommend `/zoom-in verify` to confirm fixes, then `/zoom-in audit` for authoritative scores
+Finding prioritization, validation, fix application, house-style conformance, ARCHITECTURE.md updates, backlog deferral, close-the-loop: see `references/refactor.md`.
 
 ---
 
 #### `/zoom-in verify [scope]` — Post-fix verification pass
 
-Lightweight check that recent fixes achieved their goal without introducing new violations.
-Targeted and fast — checks only the areas that changed, not the whole project. See `references/verify.md`.
+Lightweight check that recent fixes achieved their goal without introducing new violations. Targeted and fast — checks only the areas that changed, not the whole project.
 
-**Workflow:**
+**Scope:** module, file path, or omit for all fixes from the most recent audit/refactor.
+**Produces:** verification report (✅ Confirmed / ⚠️ Partial / 🔴 Regressed / ❌ Not Fixed), new-violation scan, score estimate.
+**Fails if:** no previous audit or refactor found → suggest `/zoom-in audit`.
 
-1. Load the most recent audit + refactor results
-2. For each "Fixed" finding: verify the fix is valid in current code
-3. Scan change zones for new violations across all 7 lenses (quick, not full depth)
-4. Estimate score improvement per lens
-5. Produce verification report: ✅ Confirmed / ⚠️ Partial / 🔴 Regressed / ❌ Not Fixed
-6. Recommend next step based on verification results
-
-**Verification outcomes drive the next action:**
-
-| Result | Next Step |
-|--------|-----------|
-| All ✅ Confirmed, no new violations | `/zoom-in audit` for authoritative scores |
-| Any 🔴 Regressed | `/zoom-in refactor` — fix the regression immediately |
-| Any ⚠️ Partial | `/zoom-in refactor` — complete the partial fix |
-| New violations detected | `/zoom-in refactor` — address new violations |
+Fix verification, new-violation scan, backlog side-effect check, score estimate, outcome→next-step table: see `references/verify.md`.
 
 ---
 
@@ -347,43 +214,25 @@ Targeted and fast — checks only the areas that changed, not the whole project.
 
 #### `/zoom-in adopt "<decision>"` — Register a new architectural decision
 
-Adds a team decision to ARCHITECTURE.md and DECISIONS.md that becomes enforced in future audits. See `references/adopt.md`.
+Adds a team decision to `DECISIONS.md` and `ARCHITECTURE.md` §3 that becomes enforced in future audits. **Draft Gate mandatory**: nothing is written until the user confirms each decision.
 
-**Auto-trigger**: When any evaluation command (audit, focus, harden) produces a `[conflict]` finding, the recommended actions include `/zoom-in adopt` to settle the conflict before refactoring.
+**Variant:** `/zoom-in adopt --ban "<pattern>"` — add a project-specific anti-pattern ban to `ANTI-PATTERNS.md` §5.
 
-**Workflow:**
+**Produces:** ADR record in `DECISIONS.md`, summary row in `ARCHITECTURE.md` §3, optional golden reference; or a new ban row in `ANTI-PATTERNS.md` §5.
+**Fails if:** no `DECISIONS.md` or `ANTI-PATTERNS.md` → suggest `/zoom-in init`.
+**Auto-trigger:** when any evaluation command produces a `[conflict]` finding, recommended actions include `/zoom-in adopt` (proposed decisions are drafts, not commands).
 
-1. Parse the decision statement
-2. Determine which lens(es) it affects
-3. Add full ADR to `DECISIONS.md` with context, reasoning, and consequences
-4. Add summary entry to `ARCHITECTURE.md` §3 (Adopted Decisions) with date and rationale
-5. If the decision establishes a new pattern → update §2 (Established Patterns) for the relevant lens
-6. If the decision conflicts with an existing Established pattern → flag the conflict and ask for confirmation before updating
-7. Add a golden reference if the decision specifies one
-
-**Variant:** `/zoom-in adopt --ban "<pattern>"` — Add a project-specific anti-pattern ban to `ANTI-PATTERNS.md`. This registers a pattern the team has decided to reject. The ban is enforced in all future audits and plan commands.
-
-**Example decisions:**
-
-- `/zoom-in adopt "all new services must return structured result objects, not raw dicts"` → Structure + Clarity
-- `/zoom-in adopt "every background job must have retry policy and idempotency key"` → Performance + Resilience
-- `/zoom-in adopt "API handlers must validate input with schema, never trust raw payload"` → Security + Clarity
-- `/zoom-in adopt --ban "direct ORM calls in API handlers — all data access through repository layer"` → adds ban to ANTI-PATTERNS.md
+Decision parsing, lens mapping, conflict detection, Draft Gate, cascading changes, Flat/Modular write targets, ban mode, escalation principle: see `references/adopt.md`.
 
 ---
 
 #### `/zoom-in plan [feature]` — Architectural plan for a new feature
 
-Designs a feature following established house style so it won't need an audit later. See `references/plan.md`.
+Designs a feature following established house style so it won't need an audit later. Reads the code first (Explore First), then designs across all applicable layers.
 
-**Workflow:**
+**Produces:** structured plan — exploration findings, flagged risks, architecture decision, step-by-step plan, anti-pattern check, open questions.
 
-1. Read `ARCHITECTURE.md` §2 (Established Patterns) and §6 (Golden References)
-2. Read `SYSTEM.md` for register and framework context
-3. Design the feature across all applicable layers (models → controllers/handlers → services → tasks/jobs → tests)
-4. Every design decision justified by: "because Established pattern in [golden reference] does X"
-5. Check the plan against each lens preemptively (will this design pass a future audit?)
-6. Produce the plan
+Explore-first, feature placement, risk/invariant analysis, anti-pattern verification, output format, quality bar: see `references/plan.md`.
 
 ---
 
@@ -459,13 +308,13 @@ SKILL.md → SYSTEM.md → ARCHITECTURE.md → DECISIONS.md → (`.zoom-in/conte
 
 | Command | Lens files | Other references |
 |---------|-----------|-----------------|
-| `/zoom-in init` | all 7 | framework reference, system-template, architecture-template, decisions-template, anti-patterns-template, relevant registers |
-| `/zoom-in re-init` | all 7 | init-changelog.md, re-init.md, framework reference, system-template, decisions-template, all existing context files |
-| `/zoom-in map` | Structure only | framework reference, DECISIONS.md |
-| `/zoom-in audit` | all 7 | register(s), framework reference, DECISIONS.md (+ module decisions if Modular), ANTI-PATTERNS.md, audit-storage.md, backlog.md |
-| `/zoom-in focus [lens]` | 1 (specified lens) | register(s), framework reference, DECISIONS.md (+ module decisions if Modular), ANTI-PATTERNS.md, audit-storage.md |
-| `/zoom-in plan` | all 7 | register(s), framework reference, DECISIONS.md (+ module decisions if Modular), ANTI-PATTERNS.md |
-| `/zoom-in refactor` | as covered by previous audit | ANTI-PATTERNS.md, DECISIONS.md, audit-storage.md, backlog.md |
-| `/zoom-in harden` | Security only | register(s), framework reference, ANTI-PATTERNS.md |
-| `/zoom-in verify` | all 7 (quick scan only) | audit-storage.md (previous audit + refactor results), backlog.md |
-| `/zoom-in adopt` | none | DECISIONS.md, ANTI-PATTERNS.md (if --ban), SYSTEM.md (Decision Structure) |
+| `/zoom-in init` | all 7 | **init.md**, framework reference, system-template, architecture-template, decisions-template, anti-patterns-template, relevant registers |
+| `/zoom-in re-init` | all 7 | **re-init.md**, init-changelog.md, framework reference, system-template, decisions-template, all existing context files |
+| `/zoom-in map` | Structure only | **map.md**, framework reference, DECISIONS.md |
+| `/zoom-in audit` | all 7 | **audit.md**, register(s), framework reference, DECISIONS.md (+ module decisions if Modular), ANTI-PATTERNS.md, audit-storage.md, backlog.md |
+| `/zoom-in focus [lens]` | 1 (specified lens) | **focus.md**, register(s), framework reference, DECISIONS.md (+ module decisions if Modular), ANTI-PATTERNS.md, audit-storage.md |
+| `/zoom-in plan` | all 7 | **plan.md**, register(s), framework reference, DECISIONS.md (+ module decisions if Modular), ANTI-PATTERNS.md |
+| `/zoom-in refactor` | as covered by previous audit | **refactor.md**, ANTI-PATTERNS.md, DECISIONS.md, audit-storage.md, backlog.md |
+| `/zoom-in harden` | Security only | **harden.md**, register(s), framework reference, ANTI-PATTERNS.md |
+| `/zoom-in verify` | all 7 (quick scan only) | **verify.md**, audit-storage.md (previous audit + refactor results), backlog.md |
+| `/zoom-in adopt` | none | **adopt.md**, DECISIONS.md, ANTI-PATTERNS.md (if --ban), SYSTEM.md (Decision Structure) |
