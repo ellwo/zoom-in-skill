@@ -201,10 +201,12 @@ Use **Conventional Commits** (`feat:`, `fix:`, `feat!:` for breaking, `docs:`/`c
 
 Releases are fully automated via GitHub Actions — no manual `npm publish`:
 
-1. **You merge PRs to `main`** (using Conventional Commit titles).
-2. **[release-please](https://github.com/googleapis/release-please)** keeps a running "release PR" open that bumps `package.json`, `skills/zoom-in/SKILL.md`, and `CHANGELOG.md` based on the commits since the last release.
-3. **You merge the release PR** when you're ready to ship. release-please then creates the `vX.Y.Z` tag and a GitHub Release with the auto-generated changelog.
-4. **[publish.yml](.github/workflows/publish.yml)** fires on that tag and publishes `zoom-in@X.Y.Z` to npm **with provenance** (idempotent — re-runs skip if the version is already published).
+1. **You merge feature/fix PRs to `main`** (using Conventional Commit titles).
+2. **[release-please](https://github.com/googleapis/release-please)** opens a running "release PR" that bumps `package.json`, `skills/zoom-in/SKILL.md`, and `CHANGELOG.md` based on the commits since the last release.
+3. **The release PR auto-merges once its CI checks pass**, then release-please creates the `vX.Y.Z` tag and a GitHub Release with the auto-generated changelog.
+4. **A `publish` job in the same [release-please.yml](.github/workflows/release-please.yml) workflow** then publishes `zoom-in@X.Y.Z` to npm **with provenance** (idempotent — skips if the version is already published; skips gracefully if `NPM_TOKEN` isn't set yet).
+
+> The publish step lives *inside* `release-please.yml` (as a job dependency) rather than in a separate tag-triggered workflow. That's because GitHub's default `GITHUB_TOKEN` can create tags/releases but **cannot trigger other workflows** — a separate `on: push: tags` publisher would never fire for release-please tags. [publish.yml](.github/workflows/publish.yml) remains for manual/first releases and `workflow_dispatch` re-runs.
 
 CI (`.github/workflows/ci.yml`) gates every PR with the version-sync check, the smoke test, and a tarball check.
 
@@ -213,35 +215,23 @@ CI (`.github/workflows/ci.yml`) gates every PR with the version-sync check, the 
 1. **Create an npm automation token** at <https://www.npmjs.com/settings/~/tokens> (Granular Access or Classic "Automation" token — it publishes without requiring your 2FA OTP). Scope it to publish `zoom-in`.
 2. **Add it as a repository secret** named `NPM_TOKEN`:
    `Settings → Secrets and variables → Actions → New repository secret`.
-3. Ensure the repo is **public** (required for npm provenance) and that
-   `Settings → Actions → General → Workflow permissions` allows read/write as
-   needed by the workflows.
+   Until this is set, releases still cut tags + GitHub Releases, but npm publish is skipped (the workflow stays green with a notice).
+3. The repo is **public** (required for npm provenance) and **"Allow GitHub Actions to create and approve pull requests"** is enabled under `Settings → Actions → General → Workflow permissions` (already configured).
 
-### First release
+### Publishing an already-tagged version
 
-release-please will open the initial release PR once it sees Conventional
-Commit messages on `main`. If you'd rather ship `1.0.0` immediately:
+If a tag was cut before `NPM_TOKEN` was set (e.g. `v1.0.0`), publish it manually after adding the secret:
 
-```bash
-git tag v1.0.0
-git push origin v1.0.0      # triggers publish.yml → npm publish
-```
+- Actions UI → **Publish (manual)** workflow → **Run workflow** → enter the tag (e.g. `v1.0.0`), or
+- `git tag vX.Y.Z && git push origin vX.Y.Z` for a brand-new tag.
 
-(Then optionally create a GitHub Release from that tag.)
+### Controlling release cadence
 
-### Subsequent releases
-
-Just keep merging `feat:`/`fix:` PRs. When the release-please PR's proposed
-version looks right, merge it — the tag, GitHub Release, changelog, and npm
-publish all happen automatically. `npx zoom-in update` then refreshes every
-installed copy for your users.
+The release PR auto-merges after CI passes, so every `feat:`/`fix:` merge produces a release automatically. To require a human to merge each release PR instead, disable auto-merge at `Settings → General → Pull Requests → Allow auto-merge`, or add a branch protection rule on `main` with required status checks.
 
 ### Bumping the skill
 
-The version lives in **two** places that must stay in sync (enforced by
-`test/version-sync.js` and CI): `package.json` and the `version:` frontmatter
-of [`skills/zoom-in/SKILL.md`](skills/zoom-in/SKILL.md). release-please bumps
-both automatically via `extra-files`; if you ever bump by hand, update both.
+The version lives in **two** places that must stay in sync (enforced by `test/version-sync.js` and CI): `package.json` and the `version:` frontmatter of [`skills/zoom-in/SKILL.md`](skills/zoom-in/SKILL.md). release-please bumps both automatically via `extra-files`; if you ever bump by hand, update both.
 
 ## License
 
