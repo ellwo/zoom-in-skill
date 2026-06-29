@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/ellwo/zoom-in-skill/compare/v1.1.0...v1.1.1) (2026-06-29)
+
+
+### Bug Fixes
+
+* readme ([a7fac47](https://github.com/ellwo/zoom-in-skill/commit/a7fac47229a81043b6aa068c2213e5bdc5390569))
+
 ## [1.1.0](https://github.com/ellwo/zoom-in-skill/compare/v1.0.3...v1.1.0) (2026-06-29)
 
 
