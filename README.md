@@ -270,6 +270,7 @@ With those, release-please's release PRs auto-merge once CI passes, and the publ
 
 The version lives in **two** places that must stay in sync (enforced by `test/version-sync.js` and CI): `package.json` and the `version:` frontmatter of [`skills/zoom-in/SKILL.md`](skills/zoom-in/SKILL.md). release-please bumps both automatically — [`release-please-config.json`](release-please-config.json) lists `skills/zoom-in/SKILL.md` under `extra-files` (type `generic`), and the `# x-release-please-version` annotation on the skill's `version:` line tells release-please's Generic updater which value to bump. If you ever bump by hand, update both.
 
+Visit Me : [Mohammed](http://mzoom.socialaipilot.com/en)
 ## License
 
 Apache-2.0 — see [LICENSE](LICENSE).
