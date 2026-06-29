@@ -203,7 +203,7 @@ Releases are fully automated via GitHub Actions — no manual `npm publish`:
 
 1. **You merge feature/fix PRs to `main`** (using Conventional Commit titles).
 2. **[release-please](https://github.com/googleapis/release-please)** opens a running "release PR" that bumps `package.json`, `skills/zoom-in/SKILL.md`, and `CHANGELOG.md` based on the commits since the last release.
-3. **The release PR auto-merges once its CI checks pass**, then release-please creates the `vX.Y.Z` tag and a GitHub Release with the auto-generated changelog.
+3. **You merge the release PR** (one click — see "Fully hands-off auto-merge" below to automate this too). release-please then creates the `vX.Y.Z` tag and a GitHub Release with the auto-generated changelog.
 4. **A `publish` job in the same [release-please.yml](.github/workflows/release-please.yml) workflow** then publishes `zoom-in@X.Y.Z` to npm **with provenance** (idempotent — skips if the version is already published; skips gracefully if `NPM_TOKEN` isn't set yet).
 
 > The publish step lives *inside* `release-please.yml` (as a job dependency) rather than in a separate tag-triggered workflow. That's because GitHub's default `GITHUB_TOKEN` can create tags/releases but **cannot trigger other workflows** — a separate `on: push: tags` publisher would never fire for release-please tags. [publish.yml](.github/workflows/publish.yml) remains for manual/first releases and `workflow_dispatch` re-runs.
@@ -225,9 +225,14 @@ If a tag was cut before `NPM_TOKEN` was set (e.g. `v1.0.0`), publish it manually
 - Actions UI → **Publish (manual)** workflow → **Run workflow** → enter the tag (e.g. `v1.0.0`), or
 - `git tag vX.Y.Z && git push origin vX.Y.Z` for a brand-new tag.
 
-### Controlling release cadence
+### Fully hands-off auto-merge (optional)
 
-The release PR auto-merges after CI passes, so every `feat:`/`fix:` merge produces a release automatically. To require a human to merge each release PR instead, disable auto-merge at `Settings → General → Pull Requests → Allow auto-merge`, or add a branch protection rule on `main` with required status checks.
+By default the release PR is merged by a maintainer (one click) — a useful human gate. To make every `feat:`/`fix:` merge produce a release with **no** clicking:
+
+1. Add a branch protection rule on `main` (`Settings → Branches → Add rule`) requiring the **Smoke + packaging gates** check.
+2. Ensure **Allow auto-merge** is on (`Settings → General → Pull Requests`) — already enabled.
+
+With those, release-please's release PRs auto-merge once CI passes, and the publish job then ships to npm automatically. Without branch protection, GitHub won't allow auto-merge, so the release PR stays open until you merge it.
 
 ### Bumping the skill
 
