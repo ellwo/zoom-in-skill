@@ -96,6 +96,17 @@ function looksLikeOurSkill(dir) {
   }
 }
 
+// Read the declared `version:` from a skill dir's SKILL.md frontmatter, or null.
+function skillVersionAt(dir) {
+  try {
+    const text = fs.readFileSync(path.join(dir, 'SKILL.md'), 'utf8');
+    const m = text.match(/^---[\s\S]*?^version:\s*(\S+)/m);
+    return m ? m[1].trim().replace(/^["']|["']$/g, '') : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 // --- Logging ------------------------------------------------------------
 
 const COLORS = {
@@ -125,6 +136,6 @@ module.exports = {
   HOME, HOME_DIR, CACHE_SKILLS_DIR, CACHE_SKILL_DIR, MANIFEST_PATH,
   OWNERSHIP_MARKER, bundledVersion,
   exists, isSymlink, isDir, mkdirp, rmrf, copyTree, linkOrCopy,
-  looksLikeOurSkill,
+  looksLikeOurSkill, skillVersionAt,
   log, ok, warn, err, info, dim, paint, fatal,
 };

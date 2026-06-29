@@ -7,6 +7,7 @@ const { bundledVersion, paint, fatal } = require('./util');
 const { runInstall } = require('./install');
 const { runUninstall } = require('./uninstall');
 const { runList, runTargets } = require('./list');
+const { runDoctor } = require('./doctor');
 
 const HELP = `zoom-in — installable architectural-audit skill for AI coding agents
 
@@ -16,6 +17,7 @@ Usage:
   npx zoom-in uninstall [targets...] [options]
   npx zoom-in list
   npx zoom-in targets [options]
+  npx zoom-in doctor
   npx zoom-in --help | -h
   npx zoom-in --version | -v
 
@@ -27,6 +29,9 @@ Commands:
   uninstall    Remove the skill from targets. With no targets, removes all.
   list         Show where the skill is currently installed.
   targets      List supported editors and their detection status.
+  doctor       Diagnose the local install: cache, manifest, every target
+               (presence, symlink validity, version drift). Exits non-zero
+               if any problem is found.
 
 Targets (global):
   cursor       Cursor                         (~/.cursor/skills)
@@ -121,6 +126,11 @@ function cli(argv) {
     case 'targets':
       runTargets(opts);
       break;
+    case 'doctor': {
+      const code = runDoctor();
+      if (code) process.exitCode = code;
+      break;
+    }
     case 'help': case '':
       process.stdout.write(HELP);
       break;
