@@ -8,8 +8,10 @@ const {
 } = require('./util');
 const {
   targetById, supportedIds, detectAvailable, resolveProjectSkillsDir,
+  GLOBAL_TARGETS, PROJECT_TARGETS,
 } = require('./targets');
 const manifest = require('./manifest');
+const prompt = require('./prompt');
 
 // Stage the bundled skill into the stable cache (~/.zoom-in/skills/zoom-in).
 // This is the single source of truth for both copy and link installs, so
@@ -122,10 +124,84 @@ function installOne({ target, skillsDirAbs, scope, projectRoot }, opts) {
   return { id: target.id, scope, path: skillPath, method, skipped: false };
 }
 
-function runInstall(args, opts) {
+// Interactive setup: ask scope, editors, and method (matching the UX of
+// established skill CLIs). Returns { ids, scope, method } or null if cancelled.
+// Only called when stdin is a TTY and no targets/flags were passed.
+async function interactiveSetup(opts) {
+  const { askSelect, askMultiSelect, confirm } = prompt;
+
+  // 1. Scope — unless already chosen via --project / --global.
+  let scope;
+  if (opts.scopeSet) {
+    scope = opts.project ? 'project' : 'global';
+  } else {
+    scope = await askSelect('Install scope', [
+      { value: 'global', label: 'Global', hint: '~/.cursor/skills, ~/.claude/skills, … (available in all your projects)' },
+      { value: 'project', label: 'Project', hint: './.cursor/skills, … (shared with anyone who clones this repo)' },
+    ], 'global');
+  }
+  const project = scope === 'project';
+
+  // 2. Editors — multi-select, detected ones pre-selected.
+  const projectRoot = opts.projectRoot || process.cwd();
+  const table = project ? PROJECT_TARGETS : GLOBAL_TARGETS;
+  const detected = detectAvailable(project, projectRoot);
+  const detectedIds = new Set(detected.map((d) => d.id));
+  const editorOpts = table.map((t) => ({
+    value: t.id,
+    label: t.id.padEnd(9) + t.label,
+    selected: detectedIds.has(t.id),
+    detected: detectedIds.has(t.id),
+  }));
+  const ids = await askMultiSelect('Select editors', editorOpts);
+  if (!ids.length) {
+    info('No editors selected. Cancelled.');
+    return null;
+  }
+
+  // 3. Method — unless already chosen via --link / --copy.
+  let method;
+  if (opts.methodSet) {
+    method = opts.link ? 'link' : 'copy';
+  } else {
+    method = await askSelect('Install method', [
+      { value: 'copy', label: 'Copy', hint: 'portable, works everywhere (default)' },
+      { value: 'link', label: 'Symlink', hint: 'single source of truth; `npx zoom-in update` refreshes all at once' },
+    ], 'copy');
+  }
+
+  // Summary + confirm.
+  const where = project ? 'into this project' : 'globally';
+  info(`Will install ${where} into: ${ids.join(', ')} [${method}]`);
+  const go = await confirm('Proceed?', true);
+  prompt.closeRl();
+  if (!go) {
+    info('Cancelled.');
+    return null;
+  }
+  return { ids, scope, method };
+}
+
+async function runInstall(args, opts) {
   const isUpdate = !!opts.update;
   info(`${isUpdate ? 'Updating' : 'Installing'} zoom-in skill v${bundledVersion()}`);
   if (opts.dryRun) dim('(dry run — no files will change)');
+
+  // Interactive mode: when run with no targets/flags on a TTY, ask the user.
+  // Skipped for `update` (re-applies existing installs) and when flags/args/-y
+  // are given, or when stdin isn't a TTY (CI, piped).
+  if (
+    !isUpdate &&
+    !opts.yes &&
+    !opts.all &&
+    args.length === 0 &&
+    prompt.isInteractive()
+  ) {
+    const chosen = await interactiveSetup(opts);
+    if (!chosen) return;
+    opts = { ...opts, project: chosen.scope === 'project', link: chosen.method === 'link' };
+    args = chosen.ids;
+  }
 
   const targets = resolveTargets(args, opts);
   if (!targets.length) {

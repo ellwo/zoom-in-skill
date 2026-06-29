@@ -27,14 +27,40 @@ This package fixes that. One command, every editor, easy updates.
 ## Quick start
 
 ```bash
-# Install into every editor detected on your machine
+# Interactive — asks where (global/project), which editors, and copy vs symlink
 npx zoom-in install
+```
 
-# Or pick specific editors
-npx zoom-in install cursor claude
+You'll be guided through a short prompt (like other skill CLIs such as `vercel-labs/skills` and `aiskills`):
 
-# See what would happen first
-npx zoom-in install --dry-run
+```
+? Install scope
+  1) Global — ~/.cursor/skills, ~/.claude/skills, … (available in all your projects)  (default)
+  2) Project — ./.cursor/skills, … (shared with anyone who clones this repo)
+Select [1]
+? Select editors
+  1) [x] cursor   — Cursor                         (detected)
+  2) [x] claude   — Claude Code                    (detected)
+  3) [x] agents   — Generic agents (Gemini CLI, …) (detected)
+  4) [ ] copilot  — GitHub Copilot / VS Code
+  5) [ ] cline    — Cline
+  6) [x] gemini   — Gemini CLI (standalone)        (detected)
+Select (comma-separated, "all", or Enter for default) 1,2
+? Install method
+  1) Copy — portable, works everywhere  (default)
+  2) Symlink — single source of truth; `npx zoom-in update` refreshes all at once
+Select [1]
+→ Will install globally into: cursor, claude [copy]
+Proceed? [Y/n] y
+```
+
+Prefer no prompts? Pass flags (CI-friendly):
+
+```bash
+npx zoom-in install -a cursor -a claude -g -y   # global, just these two, no prompts
+npx zoom-in install --project --link            # project scope, symlink
+npx zoom-in install --all --yes                 # every editor, no prompts
+npx zoom-in install --dry-run                   # preview without changing anything
 ```
 
 Then **restart your editor/CLI** so it picks up the new skill. In Cursor or Claude Code you can now run:
@@ -118,7 +144,7 @@ If your OS refuses to create a symlink (e.g. Windows without Developer Mode / ad
 ## Commands
 
 ```
-npx zoom-in install [targets...]   Install the skill (default: all detected editors)
+npx zoom-in install [targets...]   Install the skill (interactive if no targets given)
 npx zoom-in update   [targets...]   Re-apply the latest version to installed targets
 npx zoom-in uninstall [targets...]  Remove the skill (default: all recorded targets)
 npx zoom-in list                    Show where the skill is currently installed
@@ -128,13 +154,19 @@ npx zoom-in --version               Show the installed skill version
 npx zoom-in --help                  Full usage help
 ```
 
+`install` with no targets is **interactive**: it asks for scope (global/project), editors (multi-select, detected ones pre-selected), and method (copy/symlink), then confirms. Pass `-a`, `-g`, `--project`, `--link`, `--all`, or `-y` to skip prompts.
+
 ### Options
 
 | Flag | Description |
 |------|-------------|
-| `--project` | Install/uninstall into the current repo (`./.cursor/skills`, …) |
+| `-a, --agent <id>` | Target an editor (repeatable): `-a cursor -a claude` |
+| `-g, --global` | Global scope `~/.<editor>/skills` (default) |
+| `--project` | Project scope `./<editor>/skills` (shared via the repo) |
 | `--all` | Install into *every* known target, detected or not |
 | `--link` | Symlink to the staged cache instead of copying |
+| `--copy` | Copy into each target (default) |
+| `-y, --yes` | Skip all prompts (use defaults/flags) — CI-friendly |
 | `--force` | Overwrite a target that already holds a foreign skill |
 | `--dry-run` | Show what would happen without changing anything |
 | `--project-root <dir>` | Project root for `--project` (default: current directory) |

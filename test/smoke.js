@@ -38,6 +38,21 @@ function run(args, expectOk = true) {
   }
 }
 
+// Run with piped stdin + extra env (used to drive the interactive prompts).
+function runWith(input, args, envExtra = {}, expectOk = true) {
+  try {
+    const out = execFileSync(process.execPath, [BIN, ...args], {
+      input,
+      env: { ...process.env, ZOOMIN_HOME: FAKE_HOME, ...envExtra },
+      encoding: 'utf8',
+    });
+    return { ok: true, out };
+  } catch (e) {
+    if (!expectOk) return { ok: false, out: (e.stderr || '') + (e.stdout || '') };
+    throw e;
+  }
+}
+
 console.log('zoom-in smoke test');
 console.log(`  fake home: ${FAKE_HOME}`);
 
@@ -116,6 +131,30 @@ run(['install', 'gemini', '--link']);
 fs.rmSync(path.join(FAKE_HOME, '.zoom-in', 'skills', 'zoom-in'), { recursive: true, force: true });
 const docBad = run(['doctor'], false);
 check('doctor flags a broken install', /problem/i.test(docBad.out), docBad.out.trim());
+
+// 12. interactive install: piped answers drive scope(1=global), editors(1,2),
+//     method(1=copy), confirm(y). Clean slate first.
+run(['uninstall']);
+const inter = runWith('1\n1,2\n1\ny\n', ['install'], { ZOOMIN_FORCE_PROMPT: '1' });
+check('interactive install created ~/.cursor/skills/zoom-in/SKILL.md',
+  fs.existsSync(path.join(FAKE_HOME, '.cursor', 'skills', 'zoom-in', 'SKILL.md')), inter.out.trim());
+check('interactive install created ~/.claude/skills/zoom-in/SKILL.md',
+  fs.existsSync(path.join(FAKE_HOME, '.claude', 'skills', 'zoom-in', 'SKILL.md')), inter.out.trim());
+check('interactive prompt asked for scope + editors + method',
+  /Install scope/.test(inter.out) && /Select editors/.test(inter.out) && /Install method/.test(inter.out), inter.out.trim());
+
+// 13. declining the confirm cancels and installs nothing extra
+run(['uninstall']);
+const declined = runWith('1\n1\n1\nn\n', ['install'], { ZOOMIN_FORCE_PROMPT: '1' });
+check('interactive cancel aborts without installing',
+  /Cancelled/.test(declined.out) && !fs.existsSync(path.join(FAKE_HOME, '.cursor', 'skills', 'zoom-in')), declined.out.trim());
+
+// 14. -a / -g / -y flags are non-interactive and target the given editors
+run(['uninstall']);
+run(['install', '-a', 'cursor', '-a', 'claude', '-g', '-y']);
+check('-a/-g/-y installed cursor + claude',
+  fs.existsSync(path.join(FAKE_HOME, '.cursor', 'skills', 'zoom-in', 'SKILL.md')) &&
+  fs.existsSync(path.join(FAKE_HOME, '.claude', 'skills', 'zoom-in', 'SKILL.md')));
 
 // cleanup
 fs.rmSync(TMP, { recursive: true, force: true });
