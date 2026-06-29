@@ -22,8 +22,9 @@ Usage:
   npx zoom-in --version | -v
 
 Commands:
-  install      Install the zoom-in skill into one or more editors.
-               With no targets, installs into every detected editor.
+  install      Install the zoom-in skill. Interactive by default: asks for
+               scope (global/project), editors, and method (copy/symlink).
+               Pass targets/flags or -y to skip prompts.
   update       Re-apply the latest bundled skill to installed targets.
                With no targets, refreshes everything recorded in the manifest.
   uninstall    Remove the skill from targets. With no targets, removes all.
@@ -42,13 +43,13 @@ Targets (global):
   gemini       Gemini CLI standalone          (~/.gemini/skills)
 
 Options:
-  --project            Install/uninstall into the current repo
-                       (./.cursor/skills, ./.claude/skills, ...) so the skill
-                       is shared with anyone who clones the project.
+  -a, --agent <id>     Target an editor (repeatable): -a cursor -a claude
+  -g, --global         Global scope (~/.<editor>/skills) — default.
+  --project            Project scope (./<editor>/skills) — shared via the repo.
   --all                Install into every known target, detected or not.
-  --link               Symlink to the staged cache instead of copying.
-                       Single source of truth: \`npx zoom-in update\` then
-                       refreshes all linked targets at once.
+  --link               Symlink to the staged cache (single source of truth).
+  --copy               Copy into each target (portable, default).
+  -y, --yes            Skip all prompts (use defaults/flags). CI-friendly.
   --force              Overwrite a target that already contains a foreign skill.
   --dry-run            Show what would happen without changing anything.
   --project-root <dir> Project root for --project (default: current directory).
@@ -56,13 +57,14 @@ Options:
   -v, --version        Show the installed skill version.
 
 Examples:
-  npx zoom-in install                 # install to all detected editors
-  npx zoom-in install cursor claude   # just these two
-  npx zoom-in install --link          # symlink for one-source updates
-  npx zoom-in install --project       # share via the current repo
+  npx zoom-in install                 # interactive: asks scope, editors, method
+  npx zoom-in install -a cursor -a claude -g -y   # non-interactive, global
+  npx zoom-in install --project --link            # project scope, symlink
+  npx zoom-in install --all --yes                 # every editor, no prompts
   npx zoom-in update                  # refresh all installed targets
   npx zoom-in uninstall               # remove everywhere
   npx zoom-in list                    # show current installs
+  npx zoom-in doctor                  # health-check the install
 
 Learn more: https://github.com/ellwo/zoom-in-skill
 `;
@@ -70,7 +72,8 @@ Learn more: https://github.com/ellwo/zoom-in-skill
 function parseFlags(argv) {
   const opts = {
     project: false, all: false, link: false, force: false,
-    dryRun: false, projectRoot: null,
+    dryRun: false, yes: false, projectRoot: null,
+    scopeSet: false, methodSet: false,
   };
   const positional = [];
   for (let i = 0; i < argv.length; i++) {
@@ -78,11 +81,20 @@ function parseFlags(argv) {
     switch (a) {
       case '-h': case '--help': opts.help = true; break;
       case '-v': case '--version': opts.version = true; break;
-      case '--project': opts.project = true; break;
+      case '--project': opts.project = true; opts.scopeSet = true; break;
+      case '-g': case '--global': opts.project = false; opts.scopeSet = true; break;
       case '--all': opts.all = true; break;
-      case '--link': opts.link = true; break;
+      case '--link': opts.link = true; opts.methodSet = true; break;
+      case '--copy': opts.link = false; opts.methodSet = true; break;
       case '--force': opts.force = true; break;
       case '--dry-run': opts.dryRun = true; break;
+      case '-y': case '--yes': opts.yes = true; break;
+      case '-a': case '--agent': {
+        const id = argv[++i];
+        if (!id) fatal('--agent requires a value (e.g. --agent cursor).');
+        positional.push(id);
+        break;
+      }
       case '--project-root':
         opts.projectRoot = argv[++i];
         if (!opts.projectRoot) fatal('--project-root requires a directory argument.');
@@ -95,7 +107,7 @@ function parseFlags(argv) {
   return { opts, positional };
 }
 
-function cli(argv) {
+async function cli(argv) {
   const { opts, positional } = parseFlags(argv);
 
   if (opts.help) {
@@ -112,10 +124,10 @@ function cli(argv) {
 
   switch (cmd) {
     case 'install':
-      runInstall(rest, opts);
+      await runInstall(rest, opts);
       break;
     case 'update':
-      runInstall(rest, { ...opts, update: true });
+      await runInstall(rest, { ...opts, update: true });
       break;
     case 'uninstall':
       runUninstall(rest, opts);
