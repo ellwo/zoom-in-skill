@@ -1,6 +1,6 @@
 {
   "name": "zoom-in",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Installable architectural-audit skill for AI coding agents. Scores backend code across 7 lenses, enforces golden-pattern laws, and evolves an adaptive ARCHITECTURE.md. Install it once into Cursor, Claude, Copilot, Cline, or any agent that loads SKILL.md files.",
   "license": "Apache-2.0",
   "homepage": "https://github.com/ellwo/zoom-in-skill",
